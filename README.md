@@ -1,0 +1,2 @@
+# lr-flashcards
+LanguageReactorの上位100単語を覚えるためのフラッシュカードアプリ
