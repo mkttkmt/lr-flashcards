@@ -1,0 +1,39 @@
+name: Build flashcards
+
+on:
+  push:
+    paths:
+      - 'data/items.json'
+      - 'scripts/build.py'
+      - 'scripts/template.html'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run build script
+        run: python scripts/build.py
+
+      - name: Commit and push if index.html changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet index.html; then
+            echo "index.html is unchanged. Skipping commit."
+          else
+            git add index.html
+            git commit -m "🤖 Auto-rebuild index.html from items.json"
+            git push
+          fi
