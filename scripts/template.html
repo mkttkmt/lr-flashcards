@@ -85,6 +85,18 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 .fc-list-empty{padding:30px;text-align:center;color:var(--text-3);font-size:14px;}
 .fc-link-btn{background:transparent;border:none;color:var(--info);cursor:pointer;font-family:inherit;font-size:15px;text-decoration:underline;padding:10px;}
 .fc-warn-mt{font-size:12px;color:var(--text-3);margin-top:6px;font-style:italic;}
+.fc-time-block{background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:12px 0 16px;text-align:left;}
+.fc-time-today{font-size:14px;color:var(--text-2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;}
+.fc-time-today b{color:var(--text);font-size:20px;font-weight:600;margin-left:8px;}
+.fc-time-chart{display:flex;align-items:flex-end;gap:6px;height:60px;margin-top:8px;border-bottom:0.5px solid var(--border);padding-bottom:2px;}
+.fc-time-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;}
+.fc-time-bar{width:100%;background:var(--text-3);border-radius:3px 3px 0 0;min-height:2px;}
+.fc-time-bar.today{background:var(--text-2);}
+.fc-time-labels{display:flex;gap:6px;margin-top:4px;}
+.fc-time-label{flex:1;text-align:center;font-size:10px;color:var(--text-3);}
+.fc-time-label.today{color:var(--text-2);font-weight:600;}
+.fc-time-val{font-size:9px;color:var(--text-3);min-height:11px;}
+.fc-session-time{font-size:14px;color:var(--text-2);margin:8px 0 0;}
 </style>
 </head>
 <body>
@@ -92,6 +104,13 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 <div id="fc-intro" class="fc-intro">
   <h2>📚 LR単語帳</h2>
   <p>頻出100語・重み付きランダム</p>
+  <div class="fc-time-block" id="fc-time-block">
+    <div class="fc-time-today">
+      <span>今日の学習時間</span><b id="fc-time-today-val">0分</b>
+    </div>
+    <div class="fc-time-chart" id="fc-time-chart"></div>
+    <div class="fc-time-labels" id="fc-time-labels"></div>
+  </div>
   <div class="fc-summary" id="fc-summary"></div>
   <button class="fc-startbtn" onclick="startApp()">▶ スタート</button>
   <button class="fc-link-btn" onclick="showMastered()">✓ 習得した単語一覧を見る</button>
@@ -167,7 +186,8 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 
   <div id="fc-done" class="fc-done fc-hidden">
     <h2 style="margin:0 0 12px;font-size:20px;">お疲れさま 🌙</h2>
-    <p style="margin:0 0 20px;color:var(--text-2);font-size:14px;" id="fc-done-summary"></p>
+    <p style="margin:0 0 8px;color:var(--text-2);font-size:14px;" id="fc-done-summary"></p>
+    <p class="fc-session-time" id="fc-session-time"></p>
     <div style="margin:20px 0;">
       <div class="fc-stat"><span class="fc-stat-num" id="s-ok" style="color:var(--ok)">0</span>覚えた</div>
       <div class="fc-stat"><span class="fc-stat-num" id="s-maybe" style="color:var(--maybe)">0</span>怪しい</div>
@@ -181,7 +201,79 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 <script>
 const CARDS = {{CARDS_DATA}};
 const MEM_KEY = 'lr_word_memory_v2';
+const TIME_KEY = 'lr_study_time_v1';
 const MASTERED_THRESHOLD = 5; // 「覚えた」5回で習得判定
+const KEEP_DAYS = 90;
+
+// ===== Study time tracking =====
+function loadTime(){
+  try{ return JSON.parse(localStorage.getItem(TIME_KEY)||'{}'); }catch(e){ return {}; }
+}
+function saveTime(t){
+  try{ localStorage.setItem(TIME_KEY, JSON.stringify(t)); }catch(e){}
+}
+function todayKey(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function pruneOldDays(t){
+  // Keep only last KEEP_DAYS days
+  const today = new Date();
+  const cutoff = new Date(today.getTime() - KEEP_DAYS*24*60*60*1000);
+  const cutoffKey = cutoff.toISOString().slice(0,10);
+  let changed = false;
+  for(const k of Object.keys(t)){
+    if(k < cutoffKey){ delete t[k]; changed = true; }
+  }
+  return changed;
+}
+let studyTime = loadTime();
+if(pruneOldDays(studyTime)) saveTime(studyTime);
+
+// Session timer state
+let sessionStartTs = null;       // timestamp when current segment started
+let sessionAccumulatedMs = 0;    // total ms accumulated this session (excluding current running segment)
+let sessionRunning = false;
+
+function timerStart(){
+  if(sessionRunning) return;
+  sessionStartTs = Date.now();
+  sessionRunning = true;
+}
+function timerPause(){
+  if(!sessionRunning) return;
+  sessionAccumulatedMs += Date.now() - sessionStartTs;
+  sessionStartTs = null;
+  sessionRunning = false;
+}
+function timerReset(){
+  sessionStartTs = null;
+  sessionAccumulatedMs = 0;
+  sessionRunning = false;
+}
+function timerCurrentMs(){
+  let total = sessionAccumulatedMs;
+  if(sessionRunning && sessionStartTs){
+    total += Date.now() - sessionStartTs;
+  }
+  return total;
+}
+function timerCommit(){
+  // Add session time to today's total
+  timerPause();
+  const minutes = Math.round(sessionAccumulatedMs / 60000);
+  if(minutes > 0){
+    const k = todayKey();
+    studyTime[k] = (studyTime[k]||0) + minutes;
+    saveTime(studyTime);
+  }
+  return minutes;
+}
+
+
 
 // ===== Memory store (per-word, persists) =====
 function loadMemory(){
@@ -296,7 +388,45 @@ function renderIntroSummary(){
     '<div class="fc-summary-row"><span>苦手</span><b style="color:var(--no)">'+h+'</b></div>'+
     '<div class="fc-summary-row"><span>習得</span><b style="color:var(--ok)">'+k+'</b></div>';
 }
-window.addEventListener('DOMContentLoaded', renderIntroSummary);
+function renderTimeBlock(){
+  const today = todayKey();
+  const todayVal = studyTime[today] || 0;
+  document.getElementById('fc-time-today-val').textContent = todayVal+'分';
+  
+  // Build last 7 days (oldest to newest)
+  const days = [];
+  const now = new Date();
+  for(let i=6; i>=0; i--){
+    const d = new Date(now.getTime() - i*24*60*60*1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    const k = y+'-'+m+'-'+day;
+    days.push({key:k, val: studyTime[k]||0, label: (d.getMonth()+1)+'/'+d.getDate(), isToday: k===today});
+  }
+  
+  const maxVal = Math.max(...days.map(d=>d.val), 1);
+  const chartEl = document.getElementById('fc-time-chart');
+  const labelsEl = document.getElementById('fc-time-labels');
+  
+  chartEl.innerHTML = days.map(d=>{
+    const heightPct = d.val === 0 ? 0 : Math.max(4, (d.val / maxVal) * 100);
+    const valLabel = d.val === 0 ? '' : d.val;
+    return '<div class="fc-time-bar-wrap">'+
+      '<div class="fc-time-val">'+valLabel+'</div>'+
+      '<div class="fc-time-bar'+(d.isToday?' today':'')+'" style="height:'+heightPct+'%"></div>'+
+      '</div>';
+  }).join('');
+  
+  labelsEl.innerHTML = days.map(d=>
+    '<div class="fc-time-label'+(d.isToday?' today':'')+'">'+d.label+'</div>'
+  ).join('');
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  renderIntroSummary();
+  renderTimeBlock();
+});
 
 // ===== Mastered list =====
 function showMastered(){
@@ -330,6 +460,8 @@ function hideMastered(){
 function startApp(){
   unlockSpeech();
   session = {count:0, ok:0, maybe:0, no:0};
+  timerReset();
+  timerStart();
   document.getElementById('fc-intro').classList.add('fc-hidden');
   document.getElementById('fc-mastered-view').classList.add('fc-hidden');
   document.getElementById('fc-app').classList.remove('fc-hidden');
@@ -341,9 +473,11 @@ function startApp(){
 
 function goIntro(){
   if(synth) synth.cancel();
+  timerPause();
   document.getElementById('fc-app').classList.add('fc-hidden');
   document.getElementById('fc-intro').classList.remove('fc-hidden');
   renderIntroSummary();
+  renderTimeBlock();
 }
 
 function quitSession(){
@@ -438,16 +572,30 @@ function skipCard(){ prevIdx = currentIdx; nextCard(); }
 
 function showSessionDone(){
   if(synth) synth.cancel();
+  const sessionMin = timerCommit();
   document.getElementById('fc-study').classList.add('fc-hidden');
   document.getElementById('fc-done').classList.remove('fc-hidden');
   document.getElementById('s-ok').textContent = session.ok;
   document.getElementById('s-maybe').textContent = session.maybe;
   document.getElementById('s-no').textContent = session.no;
   document.getElementById('fc-done-summary').textContent = session.count+'枚やりました';
+  const todayMin = studyTime[todayKey()] || 0;
+  document.getElementById('fc-session-time').textContent = 
+    '今回 '+sessionMin+'分 / 今日累計 '+todayMin+'分';
 }
 
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && synth) synth.cancel();
+  if(document.hidden){
+    if(synth) synth.cancel();
+    timerPause();
+  } else {
+    // Only resume if we're in the study view (session active)
+    const studyVisible = !document.getElementById('fc-study').classList.contains('fc-hidden');
+    const appVisible = !document.getElementById('fc-app').classList.contains('fc-hidden');
+    if(studyVisible && appVisible){
+      timerStart();
+    }
+  }
 });
 </script>
 </body>
