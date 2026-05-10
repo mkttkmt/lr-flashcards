@@ -85,6 +85,18 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 .fc-list-empty{padding:30px;text-align:center;color:var(--text-3);font-size:14px;}
 .fc-link-btn{background:transparent;border:none;color:var(--info);cursor:pointer;font-family:inherit;font-size:15px;text-decoration:underline;padding:10px;}
 .fc-warn-mt{font-size:12px;color:var(--text-3);margin-top:6px;font-style:italic;}
+.fc-time-block{background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:12px 0 16px;text-align:left;}
+.fc-time-today{font-size:14px;color:var(--text-2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;}
+.fc-time-today b{color:var(--text);font-size:20px;font-weight:600;margin-left:8px;}
+.fc-time-chart{display:flex;align-items:flex-end;gap:6px;height:60px;margin-top:8px;border-bottom:0.5px solid var(--border);padding-bottom:2px;}
+.fc-time-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end;}
+.fc-time-bar{width:100%;background:var(--text-3);border-radius:3px 3px 0 0;min-height:2px;}
+.fc-time-bar.today{background:var(--text-2);}
+.fc-time-labels{display:flex;gap:6px;margin-top:4px;}
+.fc-time-label{flex:1;text-align:center;font-size:10px;color:var(--text-3);}
+.fc-time-label.today{color:var(--text-2);font-weight:600;}
+.fc-time-val{font-size:9px;color:var(--text-3);min-height:11px;}
+.fc-session-time{font-size:14px;color:var(--text-2);margin:8px 0 0;}
 </style>
 </head>
 <body>
@@ -92,6 +104,13 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 <div id="fc-intro" class="fc-intro">
   <h2>📚 LR単語帳</h2>
   <p>頻出100語・重み付きランダム</p>
+  <div class="fc-time-block" id="fc-time-block">
+    <div class="fc-time-today">
+      <span>今日の学習時間</span><b id="fc-time-today-val">0分</b>
+    </div>
+    <div class="fc-time-chart" id="fc-time-chart"></div>
+    <div class="fc-time-labels" id="fc-time-labels"></div>
+  </div>
   <div class="fc-summary" id="fc-summary"></div>
   <button class="fc-startbtn" onclick="startApp()">▶ スタート</button>
   <button class="fc-link-btn" onclick="showMastered()">✓ 習得した単語一覧を見る</button>
@@ -167,7 +186,8 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 
   <div id="fc-done" class="fc-done fc-hidden">
     <h2 style="margin:0 0 12px;font-size:20px;">お疲れさま 🌙</h2>
-    <p style="margin:0 0 20px;color:var(--text-2);font-size:14px;" id="fc-done-summary"></p>
+    <p style="margin:0 0 8px;color:var(--text-2);font-size:14px;" id="fc-done-summary"></p>
+    <p class="fc-session-time" id="fc-session-time"></p>
     <div style="margin:20px 0;">
       <div class="fc-stat"><span class="fc-stat-num" id="s-ok" style="color:var(--ok)">0</span>覚えた</div>
       <div class="fc-stat"><span class="fc-stat-num" id="s-maybe" style="color:var(--maybe)">0</span>怪しい</div>
@@ -181,7 +201,79 @@ body{margin:0;padding:calc(var(--safe-top)+20px) 24px calc(var(--safe-bot)+16px)
 <script>
 const CARDS = [{"w":"matter","p":"verb","t":"問題, 事柄, 事項","fr":315,"fl":"頻出","ce":"Like what?\nI don't know if it even matters...\n...but work with my hands, I guess.","cj":"例えば？\n何でもいいけど･･･\n自分の手で作りたい","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"stuff","p":"noun","t":"もの, こと, 物","fr":336,"fl":"頻出","ce":"You know, like a small--\nJust like a--\nLike a box, you know, to put stuff in.\nSo I wanted to get the thing done\nas fast as possible.","cj":"小さなよくある･･･\n中に物を入れる箱だ\nさっさと仕上げたかった","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"either","p":"conj","t":"いずれか, どちらか, または","fr":424,"fl":"頻出","ce":"from Japan anywhere in the States, it's because something went really wrong.\nReally wrong. Either that or they had to have been so bored. So bored looking","cj":"、それは何か 本当に悪いことが起こったからに違いない。   全くの\n間違いだ。 あるいは、よほど 退屈していたのだろう。\n日本の街並みを見て回るのは退屈だ。きれいな街並み、無料の 医療制度など。 いや、","src":"America. The escape room of countries 🤣","mt":false},{"w":"hang","p":"verb","t":"掛ける, ハング, 掛かる","fr":600,"fl":"頻出","ce":"forward exhale back inhale forward exhale back hold it hold it hold it it\nhold it exhale chaturanga inhale upward facing exhale downward facing let's hang","cj":"-\n-\n-","src":"Day 13 Beginner Yoga Challenge - The Secrets of Co","mt":false},{"w":"beat","p":"verb","t":"鼓動, 叩く, 打つ","fr":670,"fl":"標準","ce":"I just thought I'd--\nYou know, I am really beat.\nI think I'm gonna take that bath.\nIt was nice to meet you, Ted,\nand thank you again.","cj":"様子を見に･･･\n実は すごく疲れてて\nお風呂に入ってくる\n会えてよかった　ありがとう","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"stick","p":"verb","t":"棒, 枝, スティック","fr":683,"fl":"標準","ce":"","cj":"な気がします。世の中のその構成図という かはい。も々ろがこの3\nつが来年起こりうるでの中の大きなレンドで攻めになっていく守りで今まで通りの価値観に従がってると再来年ぐらいになっちゃうとみたいな世の中のなんかレンドとちょっとなんかもう自分の中やったことわないみたいになったりちょっと来年は意識してかなりな姿勢であれもやってみるこれもやってみるぐらいの感じでやるの…","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"fit","p":"verb","t":"合う, 装着された, 適合する","fr":702,"fl":"標準","ce":"I mean, I built it out of Peruvian walnut\nwith inlaid zebrawood.\nIt was fitted with pegs, no screws.\nI sanded it for days\nuntil it was smooth as glass.","cj":"ペルー産のクルミ材を使い\nしま模様に仕上げた\n木釘を使い キズもつけず\n何日も磨いた\n木釘を使い キズもつけず\n何日も磨いた ガラスみたいにね","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"awesome","p":"adj","t":"すごい, 素晴らしい, やばい","fr":792,"fl":"標準","ce":"hey everyone its Quito here thanks for tuning in to this 30-day beginner yoga\nchallenge you passed the halfway hurdle awesome","cj":"みなさん、こんにちは。キトです。 30日間の初心者ヨガ\nチャレンジにご参加いただきありがとうございます。半分まで来ましたね、 素晴らしい！\n今日のポーズは、パルシュヴァコーナアーサナ（拡張サイドアングルポーズ）です。","src":"Day 17 Beginner Yoga Challenge - Power and Flow in","mt":false},{"w":"plant","p":"verb","t":"植える, 植物, 工場","fr":829,"fl":"標準","ce":"lowering down in inhale come forward to Upward facing exhale downward facing\nstep forward with your right foot planting the left heel down inhale","cj":"-\n右足で前に出て、 左のかかとを地面につけます。息を吸いながら\n戦士のポーズ1に戻り、息を吐きながら 手を地面につけます。","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"season","p":"verb","t":"味付けされた, 経験豊富な, 季節","fr":833,"fl":"標準","ce":"There, my two uncles were known far\nand wide for their delicious cooking.\nThey seasoned their zesty chicken...\n...using only the freshest herbs\nand spices.","cj":"私のおじたちは\nあることで有名だった それは\nとびきりの料理\nチキンをスパイシーに味付け\n新鮮なハーブと\nスパイスだけを使用","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"lower","p":"verb","t":"下げる, 低下, 引き下げ","fr":864,"fl":"標準","ce":"legs go down inhale chest up exhale let's step back to chaturanga dandasana\nlowering down in inhale come forward to Upward facing exhale downward facing","cj":"チャトランガ・ダンダアーサナに戻り、息を吸いながら上向きに前に出て、息を吐きながら下向きに前に出ます。\n-\n右足で前に出て、 左のかかとを地面につけます。息を吸いながら","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"ship","p":"verb","t":"船, 船舶, 輸送する","fr":872,"fl":"標準","ce":"Whatever.\nWe'll just save it out till next week.\nWe ship it as is.\nWhat, are we running a charity?\nCome on, man. We're gonna take it out.","cj":"とにかく来週分に\n回しとく\nそのまま出荷しろ\n慈善事業じゃない 余分は取っておく","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"application","p":"noun","t":"アプリケーション, 応用, 申請","fr":875,"fl":"標準","ce":"","cj":"と思いますよ。なんかやりますって言っ たら申し込みいっぱい来るとかなんか行き\nと思いますよ。なんかやりますって言っ たら申し込みいっぱい来るとかなんか行き\nますって言ったら来てきてって言われると かチャンスは活かせってことですよ。","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"towards","p":"prep","t":"に向かって, 〜へ, 〜に向かって","fr":902,"fl":"やや稀","ce":"center of the chest we'll hold this for five breaths\none two nice and steady knees reach towards each other three nice and steady","cj":"これを 5回の呼吸の間保持します\n1 2 しっかりと安定して膝を 互いに近づけます 3 しっかりと安定して腰を\n沈め続けます ここで5回の呼吸をした後、お腹をどんどん深く","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"pop","p":"verb","t":"ポップ, 弾ける, 人気","fr":922,"fl":"やや稀","ce":"2 3 keep your hips grounded four and back up to the center hands down cross\nyour feet again I'm going to pop over to the side so you can see the movement","cj":"腰を地面につけたままにします。4. そして 中央に戻り、手を下ろします。\nもう一度足を交差させてください。肩の 動きが見えるよう、横に移動します。\nこれ …から","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"path","p":"noun","t":"小道, 道, 経路","fr":1119,"fl":"やや稀","ce":"shape of your or the shape of the pose or asana instead focus on the inner\njourney the inner experience and let the path of yoga unfold with the brilliance","cj":"自分の体の形やポーズ やアーサナの形によって自分を判断しないでください。代わりに、内なる\n旅、内なる体験に集中し、 ヨガの道が内なる自己の輝きと光とともに展開するようにしてください。\n一呼吸ずつ、","src":"Day 17 Beginner Yoga Challenge - Power and Flow in","mt":false},{"w":"honestly","p":"adv","t":"正直に, 率直に, ぶっちゃけ","fr":1179,"fl":"やや稀","ce":"","cj":"とかま全然ありだと思います。あとは感情 を素直に外に出す練習をしてみてください\nとかま全然ありだと思います。あとは感情 を素直に外に出す練習をしてみてください\n。ポイント月果になるものを実は今回僕は あえて設定してまして35月です。次です","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"guide","p":"verb","t":"ガイド, 案内, 指導","fr":1192,"fl":"やや稀","ce":"open so gently lean over to the right side and then inhale raise the arm and\nthis time see if we can just guide a little bit more down bringing the Torso\ncloser to the thigh two","cj":"ゆっくりと右側に体を傾け、息を 吸い込みます。腕を上げ、\n今度は胴体を太ももに近づけるように、もう少し下に誘導できるか確認します。2. 3.\n-","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"assume","p":"adv","t":"仮定する, 想定する, 見なす","fr":1206,"fl":"やや稀","ce":"Make more green, man. A lot more.\nForget about money.\nAssume you have all you want.\nI don't know.","cj":"もっと稼ぎたいかな\nお金以外で望むことは？\nどうかな･･･","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"extremely","p":"adv","t":"非常に, 極めて, 大変","fr":1314,"fl":"やや稀","ce":"","cj":"の情報によって便利になるかと思いきや 極端に言うと自分たちの首が閉められ\nの情報によって便利になるかと思いきや 極端に言うと自分たちの首が閉められ\nちゃったみたいな、え、ことが極端にと 起きてるわけですよね。世の中のこう","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"eventually","p":"adv","t":"結局, 最終的に, やがて","fr":1341,"fl":"やや稀","ce":"crossed and leave your feet on the ground and then inhale lift the hips one\n2 3 eventually off four and five slowly release close your eyes come to rest for","cj":"組んで足を 地面につけたまま、息を吸い込み、腰を\n1、2、3、最終的には4、5と持ち上げます。ゆっくりと 解放し、目を閉じて少しの間休んでください。\n目を閉じて横になっても、あるいはただ 穏やか …で","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"demand","p":"noun","t":"需要, 要求する, 要望","fr":1350,"fl":"やや稀","ce":"","cj":"りってことがすごく増えるでしょう。怪し いっていうのは半分冗談なんですけど、\nのかなみたいなものが意外と需要があって 、自分でもなんかよう明からうちにそれが\nのかなみたいなものが意外と需要があって 、自分でもなんかよう明からうちにそれが","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"screw","p":"noun","t":"ねじ, スクリュー, ネジ","fr":1364,"fl":"やや稀","ce":"I mean, I built it out of Peruvian walnut\nwith inlaid zebrawood.\nIt was fitted with pegs, no screws.\nI sanded it for days\nuntil it was smooth as glass.","cj":"ペルー産のクルミ材を使い\nしま模様に仕上げた\n木釘を使い キズもつけず\n何日も磨いた\n木釘を使い キズもつけず\n何日も磨いた ガラスみたいにね","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"scale","p":"noun","t":"規模, スケール, うろこ","fr":1369,"fl":"やや稀","ce":"Right there?\n-Yeah, yeah, I feel a tingle.\n-Okay, on a scale of one to ten...\n...ten being your normal level of feeling\nand one being no feeling at all.","cj":"ここか？\nそうだ　チクっときた 10は通常の感じ方で\n１が無感覚だとすると？\n10は通常の感じ方で\n１が無感覚だとすると？","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"slightly","p":"adv","t":"少し, 若干, 多少","fr":1380,"fl":"やや稀","ce":"body and we'll begin our journey into utkatasana start off and make sure the\nbases of your big toes are touching the heels are ever so slightly separated","cj":"身体に意識を集中させ、ウトカタアーサナへの旅を始めます まず、親指\nの付け根が触れていることを確認し、かかとがほんの 少し離れていることを確認します\n次に、股関節のしわを見つけ、 お腹を深く引き込みます 腰を","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"properly","p":"adv","t":"ちゃんと, 適切に, きちんと","fr":1425,"fl":"やや稀","ce":"","cj":"どんどん社会での活躍とか社会での権威と か、もしくは何らかその実用的なも世の中\nに出していくとか、あとは自分の才能を ちゃんと出して世の中に対してその実理が\nに出していくとか、あとは自分の才能を ちゃんと出して世の中に対してその実理が","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"ingredient","p":"noun","t":"材料, 成分, 食材","fr":1457,"fl":"やや稀","ce":"...in a manner that would make\nmy uncles proud.\nThe finest ingredients are brought\ntogether with loving care...\n...then slow-cooked to perfection.","cj":"昔ながらのこだわりを\n守っている\n愛情たっぷりに育てられた\nチキンを⸺\nゆっくり じっくり料理する","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"determine","p":"verb","t":"決意した, 決める, 定める","fr":1461,"fl":"やや稀","ce":"","cj":"武器というかですね。絶対ヒントがそこに あるので、ま、それは強みとして理解して\nいただいていいんじゃないかなっていう風 に思います。もちろんこれはアセンダント\nを見たら分かるってことですよね。汗の上 に天体が乗っかってる方その天体の影響を","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"overall","p":"adj","t":"総じて, 概して, 全体的な","fr":1482,"fl":"やや稀","ce":"","cj":"かですね、ま、マインドセットあとま、 自尊感情とかで、ま、こう訂正していく\nものとかね、もしくはなんかファッション 変えたいなとか、ビジュアル変えたいなと\nかっていう人はこっからがすごいチャンス 。来年もほぼほぼ自分磨きして、え、","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"tight","p":"adj","t":"きつい, タイト, 狭い","fr":1495,"fl":"やや稀","ce":"with the body how you doing today where do you feel strong where do you feel\nsore where do you feel flexible where do you feel tight then Embrace that all in","cj":"体の調子をチェックして、今日はどんな感じですか？どこが 強いですか？どこが\n痛いですか？どこが柔軟ですか？どこが 硬いですか？そして、\n無条件の愛の大きな心でそれらすべてを受け入れ、 それから息を吸い込み、戻って","src":"Day 16 Beginner Yoga Challenge - Love Your Hips!","mt":false},{"w":"suck","p":"verb","t":"吸引, 吸う, しゃぶり","fr":1528,"fl":"やや稀","ce":"in behind the low belly and inhale again the sound saw gazing up to the thumbs\nexhale all the way down and again inhale sucking up through the center line gaze","cj":"下腹部の後ろを引っ込め、再び 音を「ソー」と吸い込み、親指を見上げます。\n完全に息を吐き出し、再び 中心線に沿って吸い込み、\n親指を見上げます。 ゆっくりと息を吐きながら、 両手を膝に置いてしばらく休ませ、","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"hook","p":"verb","t":"フック, 引っ掛ける, 釣り針","fr":1576,"fl":"やや稀","ce":"we're coming up into warrior one inhale lift your torso up draw the belly in\npress back through your left heel the belly sucks deeply in then hook your","cj":"戦士のポーズ１に入るかのように。息を吸いながら胴体を持ち上げ、お腹を引っ込め、左のかかとで\n後ろに押し、 お腹を深く引っ込める。次に\n右前腕を引っ掛け、左肩を 前に回す。５呼吸する。１、これがパル","src":"Day 17 Beginner Yoga Challenge - Power and Flow in","mt":false},{"w":"buddy","p":"noun","t":"仲間, 相棒, 友達","fr":1597,"fl":"やや稀","ce":"","cj":"上司からはそうでもないけど役員とか社長 からめっちゃ気に入られるとか、文化人\nみたいな人とやたら仲良くて飲み友達です よとか、いわゆる著名人とご縁があるとか\nみたいな人とやたら仲良くて飲み友達です よとか、いわゆる著名人とご縁があるとか","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"grade","p":"noun","t":"等級, 成績, グレード","fr":1624,"fl":"やや稀","ce":"So when I showed it to Mr. Pike...\n...for my grade...\n...he looked at it and said:","cj":"パイク先生に\nそれを見せると⸺\n先生はその箱を見て\nこう言った\n先生はその箱を見て\nこう言った","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"folk","p":"noun","t":"人々, 民族, 民","fr":1664,"fl":"やや稀","ce":"\"Get well and best wishes\nfrom Ted Beneke...\n...and all the folks\nat Beneke Fabricators.\"\nWow, he gives you all this time off\nand now this.","cj":"“回復を祈って” “テッド･ベネキーと\n社員一同より”\n“テッド･ベネキーと\n社員一同より”\n休みに加え 心遣いまで","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"settle","p":"verb","t":"解決する, 落ち着く, 定住する","fr":1676,"fl":"やや稀","ce":"easy take the hands forward of the hips leaving your feet on the ground bring\nyour chest forward and just inhale hips back and up exhale settle the hips down","cj":"ゆっくりと、手を腰の前に置き、 足を地面につけたまま、\n胸を前に突き出し、息を吸い、腰を後ろに上げて、息を吐き、腰を落ち着かせます。さあ、\n最初の小さな スピンをしてみましょう。","src":"Day 13 Beginner Yoga Challenge - The Secrets of Co","mt":false},{"w":"firm","p":"adj","t":"会社, 堅い, 企業","fr":1692,"fl":"やや稀","ce":"touching and then then the knees can come together so feel the quadriceps\nnice and firm hold it there for a few moments and hands in prayer at the","cj":"触れていることが非常に重要です そして、膝を合わせることができます 太ももの筋肉がしっかりしているのを 感じてください\n数 秒間その状態を保ち、胸の中央で手を合わせて祈ります\nこれを 5回の呼吸の間保持します","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"agreement","p":"noun","t":"合意, 協定, 同意","fr":1735,"fl":"稀","ce":"Then you have it.\nThree million for three months.\nThat was our agreement.\nExtended annually, 12 million a year.","cj":"ではこうしよう\n今の契約は\n３か月で300万ドル\n年契約にして\n１年 1,200万ドルだ","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"fold","p":"verb","t":"折る, 畳む, 曲げる","fr":1813,"fl":"稀","ce":"kneecaps back into the thighs thighs into the pelvic bows sitting bones back\nand up look up and exhale fold forward as you pivot down five breaths here","cj":"骨盤の弓に押し付け、座骨を後ろに上げて、上を見て息を吐き、体を回転させながら\n前屈し …ます。 ここで5回呼吸します。1回目は背中を\n優しく解放し、脚を伸ばします。2回目は","src":"Day 15 Beginner Yoga Challenge - Detox and Cleanse","mt":false},{"w":"flip","p":"verb","t":"めくる, ひっくり返す, 反転する","fr":1817,"fl":"稀","ce":"Who cares where he's at?\nWhat am I doing here?\nWell, I was gonna have you two\nflip a coin.\nBut since the genius can't be bothered,\ntoday's your lucky day.","cj":"あいつの影法師じゃない\n知るかよ\nコインで決めようと思ったが\nコインで決めようと思ったが 大先生は気にしないか･･･ 今日はラッキーだな\n全部 お前の物だ","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"odd","p":"noun","t":"確率, 公算, 見込み","fr":1897,"fl":"稀","ce":"We're talking about months\nof very hard work.\nAnd even then,\nthe odds, they're not great.\nBut you can't know for sure.","cj":"長い闘いになるし\n歩ける見込みは⸺\n長い闘いになるし\n歩ける見込みは⸺ あまり高くない\nでも断言できない","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"appropriate","p":"adj","t":"適切な, 妥当な, ふさわしい","fr":1944,"fl":"稀","ce":"","cj":"醸し出してるものがあるのか、それこそ タレントさんとか、ま、俳優さんとか\nモデルさんとか、ま、分かんない。我芸の 方とかいわゆるビジュアル商業的って言方\nモデルさんとか、ま、分かんない。我芸の 方とかいわゆるビジュアル商業的って言方","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"constantly","p":"adv","t":"絶えず, 常に, ひっきりなしに","fr":1968,"fl":"稀","ce":"","cj":"、3つ目なんですけど、自分の観察癌です ね。なんか気づいちゃう、なんか分かっ\nちゃう、なんか常にそこ考えちゃうみたい なターゲットしてるところがあると思うん\nですけど、当然ですけどそこにまつわると ころって多分人1番いい勉強したり観察し","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"scratch","p":"noun","t":"スクラッチ, 引っ掻く, 掻く","fr":2032,"fl":"稀","ce":"And for some reason,\nI thought to myself:\n\"Yeah, man, I can do better,\"\nso I started from scratch.\nI made another, then another.","cj":"そう聞かれて思ったんだ\n“いや もっとできる”と またゼロから作り始めた\nまたゼロから作り始めた 次々とね","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"column","p":"noun","t":"列, コラム, カラム","fr":2035,"fl":"稀","ce":"gravity distributed equally Through The Columns of the legs feel as though your\nlegs are like columns pressing into the ground with your sacrum as the Keystone","cj":"重心が均等に分散された状態で自分の向きを見つけます。 脚の柱を通して、脚が柱のように感じてください。 仙骨を\nキーストーンとして地面に押し付け、\n体の重さを 両脚に分散させます。","src":"Day 15 Beginner Yoga Challenge - Detox and Cleanse","mt":false},{"w":"blade","p":"verb","t":"刃, ブレード, 刀身","fr":2085,"fl":"稀","ce":"back up then calmly come on to your hands and knees spreading your shoulder\nblades apart and inhale let's build it up to a plank for five breaths\n1 2","cj":"次に、膝をゆっくりと曲げて、元の位置に戻ります。次に、落ち着いて四つん這いになり、 肩\n甲骨を広げて息を吸い込みます。5 呼吸の間、プランクの姿勢をとっていきましょう。1、2、3、4。 息を\n-","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"insane","p":"adj","t":"狂った, 異常な, 正気でない","fr":2102,"fl":"稀","ce":"...I had built this thing.\nYou should have seen it.\nIt was insane.\nI mean, I built it out of Peruvian walnut\nwith inlaid zebrawood.","cj":"これが力作だった\n本当さ　上出来でね\nペルー産のクルミ材を使い\nしま模様に仕上げた","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"incredibly","p":"adv","t":"信じられないほど, 非常に, 驚くほど","fr":2117,"fl":"稀","ce":"","cj":"オフ羊座のね、ベスタは、えっと、なんと 2027年の2月の16まではオフィ羊座\nにベスタが超ロングで滞在するんですよ。 2026年の5月からその翌年の2月まで\nにベスタが超ロングで滞在するんですよ。 2026年の5月からその翌年の2月まで","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"fellow","p":"noun","t":"仲間, 男, 人","fr":2121,"fl":"稀","ce":"Now, what does he see?\nHe sees a young fellow\nwith a big fancy house...\n...unlimited cash supply and no job.","cj":"こいつがお前を見て\n何を思うか\n若い男が大きな家に住み⸺\n職もないのにカネはある","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"clue","p":"noun","t":"手がかり, 糸口, ヒント","fr":2128,"fl":"稀","ce":"feet a little in and exhale sink down hands in prayer for a couple breaths\none two I'm going to turn forward you might get a clue of what's coming","cj":"足を少し内側に持ってきて、息を吐き、 数回呼吸するために手を合わせて沈みます。1 2 前に向きを\n変えます。これから 何が起こるか分かるかもしれません。3\n4 手を前に持ってきて、 膝を 脇の下、","src":"Day 16 Beginner Yoga Challenge - Love Your Hips!","mt":false},{"w":"butt","p":"noun","t":"尻, お尻, ケツ","fr":2168,"fl":"稀","ce":"it's as though we're just going to stand but instead of doing that we just pop it\nforward and immediately the butt comes off okay now we're going to pull away","cj":"ただ立つようにするだけですが、そうする代わりに、\n前に弾き出すとすぐにお尻が離れます。さあ、\nドックから離れていきます。さあ、始めましょう。膝をつかんで、つま先を ゆっくりと伸ばして、","src":"Day 13 Beginner Yoga Challenge - The Secrets of Co","mt":false},{"w":"sand","p":"verb","t":"研磨された, 磨かれた, 砂","fr":2172,"fl":"稀","ce":"It was fitted with pegs, no screws.\nI sanded it for days\nuntil it was smooth as glass.\nThen I rubbed all the wood with tung oil\nso it was rich and dark.","cj":"木釘を使い キズもつけず\n何日も磨いた\n木釘を使い キズもつけず\n何日も磨いた ガラスみたいにね\nそれからタンオイルを塗り\n深みを持たせた","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"fancy","p":"adj","t":"高級な, 凝った, 空想","fr":2185,"fl":"稀","ce":"Now, what does he see?\nHe sees a young fellow\nwith a big fancy house...\n...unlimited cash supply and no job.","cj":"こいつがお前を見て\n何を思うか\n若い男が大きな家に住み⸺\n職もないのにカネはある","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"implement","p":"verb","t":"実行する, 実施する, 導入する","fr":2213,"fl":"稀","ce":"","cj":"くっていう全進力というか突破力というか 、ま、それが必要になってくる。想像性の\nくっていう全進力というか突破力というか 、ま、それが必要になってくる。想像性の\n生かし方みたいなものが問われるよみたい なのが来年ってことですね。そう、仕事で","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"entirely","p":"adv","t":"全く, 完全に, すっかり","fr":2236,"fl":"稀","ce":"","cj":"ば変えていける時代っていう風に結構 星回りが伝える時代背景ですけど、ま、\n変わってきてるのでなので全部自己責任は イ石だけど、ある意味反自己責任みたいな\n変わってきてるのでなので全部自己責任は イ石だけど、ある意味反自己責任みたいな","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"activate","p":"verb","t":"起動する, 作動させる, 活性化する","fr":2242,"fl":"稀","ce":"for a moment draw the belly deeply in root down through the bases of your big\ntoes activate the inner thighs we're ready now D panas C position inhale","cj":"お腹を深く引き込み、 親指の付け根で地面をしっかりと踏み込み、内ももを\n活性化させます。準備完了です。D パナスCポジション、息を吸いながら\n腕を広げます。Bの 文字は飛ばします。お気づきかもしれませんが、","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"typical","p":"adj","t":"典型的, 一般的, 普通","fr":2273,"fl":"稀","ce":"Actually, she asked the doctor.\nPlan-wise, four treatments a week\nis fairly typical.\nAnd the therapists in your network\nare mostly fine.","cj":"妹は先生に聞いてるの\n週４回のリハビリ訓練が\n典型的なパターンだ\n選択できる療法士も\nおおむね問題ない","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"fairly","p":"adv","t":"かなり, 相当, まずまず","fr":2289,"fl":"稀","ce":"Actually, she asked the doctor.\nPlan-wise, four treatments a week\nis fairly typical.\nAnd the therapists in your network\nare mostly fine.","cj":"妹は先生に聞いてるの\n週４回のリハビリ訓練が\n典型的なパターンだ\n選択できる療法士も\nおおむね問題ない","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"sink","p":"adv","t":"流し, 沈む, シンク","fr":2327,"fl":"稀","ce":"return to SAS standing now Sur namaskar B where we enter in utkatasana you're\nfamiliar with this pose is a transition let's go ahead and start there sink into","cj":"SASの立ち姿勢に戻り、Sur namaskar Bでウトカタアーサナに入ります。\nこのポーズは移行なので、 先に進みましょう。腰を下げて\n膝を 互いに近づけ、合掌します。息を吸い、","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"transition","p":"noun","t":"移行, 移り変わり, 転換","fr":2340,"fl":"稀","ce":"return to SAS standing now Sur namaskar B where we enter in utkatasana you're\nfamiliar with this pose is a transition let's go ahead and start there sink into","cj":"SASの立ち姿勢に戻り、Sur namaskar Bでウトカタアーサナに入ります。\nこのポーズは移行なので、 先に進みましょう。腰を下げて\n膝を 互いに近づけ、合掌します。息を吸い、","src":"Day 11 Beginner Yoga Challenge: Flow & Power in Ut","mt":false},{"w":"praise","p":"verb","t":"褒める, 賞賛, 称賛","fr":2345,"fl":"稀","ce":"","cj":"、もしくはエネルギーをかけていく要素、 もしくは周りから褒められる、え、要素と\n、もしくはエネルギーをかけていく要素、 もしくは周りから褒められる、え、要素と\nかでもあります。あの、62人だから やっぱりこの物づりとか作家業みたいなの","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"priority","p":"noun","t":"優先順位, 優先, プライオリティ","fr":2392,"fl":"稀","ce":"We've sent the paperwork\nto your insurance.\nIt's high-priority. We should have\npre-authorization in the next few days.\nCertainly by early next week.","cj":"保険会社に\n書類を送りました\n優先的に数日で\n保険の許可が出るはず\n来週までには","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"relatively","p":"adv","t":"比較的, 相対的に, 割に","fr":2403,"fl":"稀","ce":"","cj":"メディア関係、出版関係、文化諸々ろ関係 っていうのはやっぱり恵まれやすいですよ\nね。え、本物の思考の方たちとか比較的 こう豊かな方たちとかっていうとこに\nね。え、本物の思考の方たちとか比較的 こう豊かな方たちとかっていうとこに","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"ultimately","p":"adv","t":"最終的に, 結局, どうしても","fr":2407,"fl":"稀","ce":"","cj":"拡大拡大拡大拡大やっていただくと後から 結構楽かもしれませんね。来年再来年\nぐらいでその辺やっていただく自分の、ま 、人間的な器。あとは、ま、結局余心です\nよね。あの、使えば使うほど良心が増えて くみたいな感じで、それで自分の信用とか","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"fulfill","p":"verb","t":"満たす, 果たす, 実現する","fr":2439,"fl":"稀","ce":"","cj":"ててくれるはずなので応援者のことを ちゃんとありがとうってもらったらいいん\nですよ。役割をやるんですよ。前の応援が 来てるんだから、特定の方からめっちゃ来\nですよ。役割をやるんですよ。前の応援が 来てるんだから、特定の方からめっちゃ来","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"cryptocurrency","p":"noun","t":"仮想通貨, 暗号資産, クリプトカレンシー","fr":2468,"fl":"稀","ce":"","cj":"もだいぶ高まっております。あとは資産を 増やしていけるっていうタイミングが来て\nますから、是非投資とかね、ま、ね、暗号 通貨とかも々ろそういうのに手を出して\nみるのも推奨してるよとかやった方がいい よってわけじゃないんですけど、え、でも","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"institution","p":"noun","t":"施設, 制度, 機関","fr":2499,"fl":"稀","ce":"At least potentially.\n--local institution looked upon with\nfavor by the Chamber of Commerce...\n...Better Business Bureau.\nAt $312,000, it's a steal.","cj":"しかも地元の店だ\nしかも地元の店だ 商工会議所など各機関に\nウケがいい\n商工会議所など各機関に\nウケがいい 31万2,000ドルは破格だ","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"anxiety","p":"noun","t":"不安, 心配, 懸念","fr":2601,"fl":"稀","ce":"equanimity as you enter the inner body a peace floods your Consciousness floods\nyour awareness wiping away all anxiety and","cj":"平静な状態に休ませましょう。内なる身体に入ると、 平和があなたの意識に溢れ、あなたの意識があなたの\n認識に溢れ、すべての不安 や\n心配を拭い去り、あなたの 心 …を","src":"Day 15 Beginner Yoga Challenge - Detox and Cleanse","mt":false},{"w":"manner","p":"noun","t":"方法, 様式, 仕方","fr":2602,"fl":"稀","ce":"Today, we carry on their tradition...\n...in a manner that would make\nmy uncles proud.\nThe finest ingredients are brought\ntogether with loving care...","cj":"私たちは\n伝統の味を引き継ぎ⸺\n昔ながらのこだわりを\n守っている\n愛情たっぷりに育てられた\nチキンを⸺","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"nerve","p":"noun","t":"神経, 勇気, 度胸","fr":2624,"fl":"稀","ce":"Gosh.\nIt looks like some nerve function\nis returning.\nOh, thank God.","cj":"まあ。\n神経機能が\n回復しているようだ\nよかった","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"crown","p":"noun","t":"クラウン, 王冠, 冠","fr":2628,"fl":"稀","ce":"pressing the knees close into the armpits as you can wrap the elbows in\nand start to lean forward aiming the crown of the head forward not up just","cj":"膝を脇の下にできるだけ近づけます。 肘を内側に巻き込み、頭頂\n部を上ではなく前に向けて前傾し始めます。\n視線は指先より前に保ち、 左足 …を","src":"Day 14 Beginner Yoga Challenge - Learn to Fly in A","mt":false},{"w":"rub","p":"verb","t":"こする, なでる, こすりつける","fr":2647,"fl":"稀","ce":"I sanded it for days\nuntil it was smooth as glass.\nThen I rubbed all the wood with tung oil\nso it was rich and dark.\nIt even smelled good.","cj":"木釘を使い キズもつけず\n何日も磨いた ガラスみたいにね\nそれからタンオイルを塗り\n深みを持たせた\nにおいもよかった","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"celebrity","p":"noun","t":"有名人, 著名人, セレブリティ","fr":2648,"fl":"稀","ce":"","cj":"醸し出してるものがあるのか、それこそ タレントさんとか、ま、俳優さんとか\n醸し出してるものがあるのか、それこそ タレントさんとか、ま、俳優さんとか\nモデルさんとか、ま、分かんない。我芸の 方とかいわゆるビジュアル商業的って言方","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"prime","p":"adj","t":"プライム, 素数, 主要な","fr":2672,"fl":"稀","ce":"Those two men, the assassins...\n...I believe I was their prime target.\nBut that somehow, they were steered\naway from me to my brother-in-law.","cj":"あの２人の暗殺者･･･\n本命は私だった\nだが何らかの方法で\n標的は義弟に誘導された","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"dip","p":"verb","t":"浸す, ディップ, ソース","fr":2681,"fl":"稀","ce":"plank slowly moving your hands shoulder width apart we really warm the body up\ntoday press up from the shoulders exhale dip down inhale take it up exhale down","cj":"プランクに移ります。ゆっくりと手を 肩幅に広げます。今日は体をしっかり温めます。\n肩から押し上げます。息を吐きながらしゃがみ込み、息を吸いながら上げます。息を吐きながら下げ、息を吸いながら上げます。息を吐きながら下げ、息を吸いながら上げます。息を吐きながら下げ、息を吸いながら上げます。前に動かし、後ろに引きます。これを\n-","src":"Day 16 Beginner Yoga Challenge - Love Your Hips!","mt":false},{"w":"unusual","p":"adj","t":"珍しい, 普通でない, 異常な","fr":2704,"fl":"稀","ce":"","cj":"んですけど、じゃあ自分がとっつけやすい のか、それともなんか異厳があるのか、\nんですけど、じゃあ自分がとっつけやすい のか、それともなんか異厳があるのか、\nおしゃれに見えるとかいつも先生とか言わ れる、え、カリスマってのがついちゃう","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"backward","p":"adv","t":"後方へ, 後ろに, 逆に","fr":2735,"fl":"稀","ce":"","cj":"ですか。私はできることを知っている、 そうなるのを知ってるみたいな感じじゃ\nないですか。未来からバックキャストして いくみたいな、そういう感じで自分をこう\nないですか。未来からバックキャストして いくみたいな、そういう感じで自分をこう","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"distribute","p":"verb","t":"配る, 配布する, 配布された","fr":2737,"fl":"稀","ce":"moving the feet hips width apart find your orientation with your center of\ngravity distributed equally Through The Columns of the legs feel as though your","cj":"足を腰幅に開き、\n重心が均等に分散された状態で自分の向きを見つけます。 脚の柱を通して、脚が柱のように感じてください。 仙骨を\nキーストーンとして地面に押し付け、","src":"Day 15 Beginner Yoga Challenge - Detox and Cleanse","mt":false},{"w":"characteristic","p":"noun","t":"特性, 特徴, 性質","fr":2744,"fl":"稀","ce":"","cj":"思っててこの3つあったらなんとなく 弱当たりしていけるっていうかま自分の\n特性みたいなもののっていうのは分かるん じゃないかな。自分が何ができて、何が\n特性みたいなもののっていうのは分かるん じゃないかな。自分が何ができて、何が","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"narrow","p":"adj","t":"狭い, 狭まる, 細い","fr":2791,"fl":"稀","ce":"","cj":"。で、イメージで言うとなんかね、狭い ところからより広いところへとモチ場を\n。で、イメージで言うとなんかね、狭い ところからより広いところへとモチ場を\n変えるタイミングです。で、山羊座って いうのは基本的に元々のエネルギーが","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"insight","p":"noun","t":"見識, 洞察, 理解","fr":2792,"fl":"稀","ce":"","cj":"たり調べたり、体験したり、体験値が増え ていったり、地見が増えたりするという\nたり調べたり、体験したり、体験値が増え ていったり、地見が増えたりするという\nことで、当然それが武器になったり詳しく なったり云々観もしくは観察画を元にそこ","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"acquire","p":"verb","t":"獲得する, 得る, 習得する","fr":2801,"fl":"稀","ce":"","cj":"YTライブのまとめ始まり始まり。ま、 基本的に強みっていうのは外からこう明日\n取ってきたものじゃなくて自分が元々持っ てる強みなんですけど3つぐらいあると\n取ってきたものじゃなくて自分が元々持っ てる強みなんですけど3つぐらいあると","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"warrior","p":"noun","t":"戦士, 武士, 兵士","fr":2815,"fl":"稀","ce":"five inhale step the right foot forward planting that left heel down almost like\nwe're coming up into warrior one inhale lift your torso up draw the belly in","cj":"前に踏み出し、左のかかとを地面につける。まるで\n戦士のポーズ１に入るかのように。息を吸いながら胴体を持ち上げ、お腹を引っ込め、左のかかとで\n後ろに押し、 お腹を深く引っ込める。次に","src":"Day 17 Beginner Yoga Challenge - Power and Flow in","mt":false},{"w":"coverage","p":"noun","t":"報道, 補償, カバレッジ","fr":2823,"fl":"稀","ce":"I traded it for an ounce of weed.\nHe's a hero.\nYou don't deny coverage to a hero.\nThey'll say they're not denying\ncoverage.","cj":"マリワナと交換したんだ\n彼はヒーローよ\n保険がおかしい\n適用外になるのは\n腹立たしいけど","src":"ブレイキング・バッド エ﻿ピ﻿ソ﻿ー﻿ド﻿9﻿:  不条理な世界","mt":false},{"w":"utilize","p":"verb","t":"利用する, 用いる, 活用する","fr":2877,"fl":"稀","ce":"","cj":"テールとヘッドが神田と静ていう天才性 創造性オリジナリティ唯一無軸にい\nをどういう風に生かしてどうやって展開し ていくかっていうのが多分すごく重要に\nなってくると思うんです。でもそれをする には自分の個性って何なのかとか、自分の","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"interaction","p":"noun","t":"相互作用, やり取り, 交流","fr":2883,"fl":"稀","ce":"","cj":"グらつきそうなのでうまく木晴らしをして ください。で、人付き合いのバランスとか\nグらつきそうなのでうまく木晴らしをして ください。で、人付き合いのバランスとか\n忙しさの調整ですね、気軽防ぐことが ポイントになるでしょう。天秤座をね、","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"suspicious","p":"adj","t":"怪しい, 疑わしい, 不審な","fr":2905,"fl":"稀","ce":"","cj":"りってことがすごく増えるでしょう。怪し いっていうのは半分冗談なんですけど、\nりってことがすごく増えるでしょう。怪し いっていうのは半分冗談なんですけど、\nのかなみたいなものが意外と需要があって 、自分でもなんかよう明からうちにそれが","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"dynamic","p":"adj","t":"動的, ダイナミック, 力強い","fr":2954,"fl":"稀","ce":"","cj":"1 年ないしそれから数年になっていくのでイメージで言うと受動的な感じから動的な感じっていうね、困キーワードとしてはすごくあると思います。で、あとはこなしていくみたいな感じとかさばいていくみたいな感じのイメージから作り出すみたいな方向に時代の記軸感というかも々も々ろは変わっていくで思ってます。","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"extract","p":"verb","t":"抜粋, 抽出, 抽出物","fr":2996,"fl":"稀","ce":"","cj":"プルキそのひ方がどんどんこう崩れていっ てるではありますけど、ひ型の中にある\nものから漁ろうとするというか、探そうと しなくてもいいんじゃないっていう話。\nついに目の前にいる選択肢の中から選ぼう としがちになったりすると思うんですけど","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"technically","p":"adv","t":"技術的には, 厳密に言えば, 理論上は","fr":3000,"fl":"稀","ce":"Yeah,\nbut technically, we rent, you know.\nYeah.","cj":"ええ、\nでも厳密に言うと、私たちは賃貸物件に住んでいるんですよ。\nうん。","src":"Atsuko Okatsuka On Renting vs. Owning A Home | Ats","mt":false},{"w":"mold","p":"noun","t":"型, カビ, 鋳型","fr":3002,"fl":"稀","ce":"","cj":"アクションもそうなんですけど、ま、何は 縛られてて、何を不安だと思わされてるの\n想転というか、破天候というかですね、え 、生き方ができるんじゃないかなと思い\nます。水瓶座のね、脅威が、ま、アイ ソルブもあるけど、アイノもあるじゃない","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"ceiling","p":"noun","t":"天井, シーリング, 天井板","fr":3016,"fl":"稀","ce":"In fact, when was the\nlast time you touched your ceiling?\nBut don't let it just collect dust.","cj":"実際、\n最後に天井に触れたのはいつですか？\nしかし、埃をかぶらせたままにしてはいけません。 費用は","src":"Atsuko Okatsuka On Renting vs. Owning A Home | Ats","mt":false},{"w":"coordinate","p":"noun","t":"座標, コーディネート, 調整する","fr":3067,"fl":"稀","ce":"","cj":"思っています。メタルとかね、ま、 トランジット見る時もすごくすごくあの\n需要視してる座標のうちの1つに、ま、 ドラゴンの軸ですね。ノード軸があるん\n需要視してる座標のうちの1つに、ま、 ドラゴンの軸ですね。ノード軸があるん","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"attachment","p":"noun","t":"愛着, 添付, 付属","fr":3146,"fl":"稀","ce":"sitting bones up pubic bone back draw the sitting bones little together to\nprotect the hamstring attachment feel the back of the leg lengthening look","cj":"坐骨を少し近づけます。\n脚の後ろが伸びるのを感じ、\nかかとを見下ろし、線が伸びるのを感じます。 かかと からふくらはぎ、膝の裏、ハムストリングス、坐骨まで、骨盤の","src":"Day 15 Beginner Yoga Challenge - Detox and Cleanse","mt":false},{"w":"outer","p":"adj","t":"外部, 外部の, 外","fr":3150,"fl":"稀","ce":"and then slowly let the legs open open open bring the heels towards each other\nthe outer edges of the foot in together grab hold of the shin bones and bring","cj":"ゆっくりと足を開きます。開いて、開いて、かかとを 互いに近づけ、\n足の外側を一緒にします。 すねの骨をつかみ、\n足を骨盤に引き寄せ、背筋を伸ばして お腹を引っ込め、顎を","src":"Day 16 Beginner Yoga Challenge - Love Your Hips!","mt":false},{"w":"roughly","p":"adv","t":"おおよそ, 大体, ざっと","fr":3172,"fl":"稀","ce":"","cj":"、2026年の4月の30から27年の3 月までほぼほぼ約1年11ヶ月予選で10\n、2026年の4月の30から27年の3 月までほぼほぼ約1年11ヶ月予選で10\nヶ月強化ま、なんとパラスもなんと オフィ座にロングステーするんですよ。","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"wrist","p":"aux","t":"手首, リスト, 腕","fr":3179,"fl":"稀","ce":"hold that for a couple of breaths two then you can release your fingers and if\nyour wrists feel flexible enough ground down through the heels of the hand and","cj":"この姿勢を2、3呼吸保持します。 その後、指を離し、\n手首が十分に柔軟であれば、 手のひらの付け根で地面をしっかりと\n踏み込み …、","src":"Day 12 Beginner Yoga Challenge: Folding Deeply For","mt":false},{"w":"conclude","p":"verb","t":"終える, 結論づける, 締めくくる","fr":3198,"fl":"稀","ce":"","cj":"感覚を思い出してそれが分かってる方は 今日はこんな感じでお開きにしたいと思い\n感覚を思い出してそれが分かってる方は 今日はこんな感じでお開きにしたいと思い\nます。皆さんありがとうございました。 裕二でした。","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true},{"w":"surrender","p":"noun","t":"降伏, 屈服する, 陥落","fr":3260,"fl":"稀","ce":"","cj":"くれるはずだからそこに、ま、乗っておき なさい。ま、サレンダーしなさいみたいな\n言い方がよくないけど、ステップ損という か、え、していただくとすごくいいんじゃ\nないかなっていう応援者の表っていうのが あるから、そこをちゃんと使っていくと","src":"【コンパクトまとめ】YT live 114 あなたの強みを教えます！","mt":true},{"w":"equivalent","p":"adj","t":"同等, 相当, 同価値","fr":3262,"fl":"稀","ce":"","cj":"27からの部屋に入ります。10何年は ここに滞在するので、て考えたら土星の\n27からの部屋に入ります。10何年は ここに滞在するので、て考えたら土星の\n23年でしょ。で、海洋星の10何年 でしょう。相当長いで我々を押した","src":"【コンパクトまとめ】YT LIVE 116 2026年の運気予報","mt":true}];
 const MEM_KEY = 'lr_word_memory_v2';
+const TIME_KEY = 'lr_study_time_v1';
 const MASTERED_THRESHOLD = 5; // 「覚えた」5回で習得判定
+const KEEP_DAYS = 90;
+
+// ===== Study time tracking =====
+function loadTime(){
+  try{ return JSON.parse(localStorage.getItem(TIME_KEY)||'{}'); }catch(e){ return {}; }
+}
+function saveTime(t){
+  try{ localStorage.setItem(TIME_KEY, JSON.stringify(t)); }catch(e){}
+}
+function todayKey(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+function pruneOldDays(t){
+  // Keep only last KEEP_DAYS days
+  const today = new Date();
+  const cutoff = new Date(today.getTime() - KEEP_DAYS*24*60*60*1000);
+  const cutoffKey = cutoff.toISOString().slice(0,10);
+  let changed = false;
+  for(const k of Object.keys(t)){
+    if(k < cutoffKey){ delete t[k]; changed = true; }
+  }
+  return changed;
+}
+let studyTime = loadTime();
+if(pruneOldDays(studyTime)) saveTime(studyTime);
+
+// Session timer state
+let sessionStartTs = null;       // timestamp when current segment started
+let sessionAccumulatedMs = 0;    // total ms accumulated this session (excluding current running segment)
+let sessionRunning = false;
+
+function timerStart(){
+  if(sessionRunning) return;
+  sessionStartTs = Date.now();
+  sessionRunning = true;
+}
+function timerPause(){
+  if(!sessionRunning) return;
+  sessionAccumulatedMs += Date.now() - sessionStartTs;
+  sessionStartTs = null;
+  sessionRunning = false;
+}
+function timerReset(){
+  sessionStartTs = null;
+  sessionAccumulatedMs = 0;
+  sessionRunning = false;
+}
+function timerCurrentMs(){
+  let total = sessionAccumulatedMs;
+  if(sessionRunning && sessionStartTs){
+    total += Date.now() - sessionStartTs;
+  }
+  return total;
+}
+function timerCommit(){
+  // Add session time to today's total
+  timerPause();
+  const minutes = Math.round(sessionAccumulatedMs / 60000);
+  if(minutes > 0){
+    const k = todayKey();
+    studyTime[k] = (studyTime[k]||0) + minutes;
+    saveTime(studyTime);
+  }
+  return minutes;
+}
+
+
 
 // ===== Memory store (per-word, persists) =====
 function loadMemory(){
@@ -296,7 +388,45 @@ function renderIntroSummary(){
     '<div class="fc-summary-row"><span>苦手</span><b style="color:var(--no)">'+h+'</b></div>'+
     '<div class="fc-summary-row"><span>習得</span><b style="color:var(--ok)">'+k+'</b></div>';
 }
-window.addEventListener('DOMContentLoaded', renderIntroSummary);
+function renderTimeBlock(){
+  const today = todayKey();
+  const todayVal = studyTime[today] || 0;
+  document.getElementById('fc-time-today-val').textContent = todayVal+'分';
+  
+  // Build last 7 days (oldest to newest)
+  const days = [];
+  const now = new Date();
+  for(let i=6; i>=0; i--){
+    const d = new Date(now.getTime() - i*24*60*60*1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    const k = y+'-'+m+'-'+day;
+    days.push({key:k, val: studyTime[k]||0, label: (d.getMonth()+1)+'/'+d.getDate(), isToday: k===today});
+  }
+  
+  const maxVal = Math.max(...days.map(d=>d.val), 1);
+  const chartEl = document.getElementById('fc-time-chart');
+  const labelsEl = document.getElementById('fc-time-labels');
+  
+  chartEl.innerHTML = days.map(d=>{
+    const heightPct = d.val === 0 ? 0 : Math.max(4, (d.val / maxVal) * 100);
+    const valLabel = d.val === 0 ? '' : d.val;
+    return '<div class="fc-time-bar-wrap">'+
+      '<div class="fc-time-val">'+valLabel+'</div>'+
+      '<div class="fc-time-bar'+(d.isToday?' today':'')+'" style="height:'+heightPct+'%"></div>'+
+      '</div>';
+  }).join('');
+  
+  labelsEl.innerHTML = days.map(d=>
+    '<div class="fc-time-label'+(d.isToday?' today':'')+'">'+d.label+'</div>'
+  ).join('');
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  renderIntroSummary();
+  renderTimeBlock();
+});
 
 // ===== Mastered list =====
 function showMastered(){
@@ -330,6 +460,8 @@ function hideMastered(){
 function startApp(){
   unlockSpeech();
   session = {count:0, ok:0, maybe:0, no:0};
+  timerReset();
+  timerStart();
   document.getElementById('fc-intro').classList.add('fc-hidden');
   document.getElementById('fc-mastered-view').classList.add('fc-hidden');
   document.getElementById('fc-app').classList.remove('fc-hidden');
@@ -341,9 +473,11 @@ function startApp(){
 
 function goIntro(){
   if(synth) synth.cancel();
+  timerPause();
   document.getElementById('fc-app').classList.add('fc-hidden');
   document.getElementById('fc-intro').classList.remove('fc-hidden');
   renderIntroSummary();
+  renderTimeBlock();
 }
 
 function quitSession(){
@@ -438,16 +572,30 @@ function skipCard(){ prevIdx = currentIdx; nextCard(); }
 
 function showSessionDone(){
   if(synth) synth.cancel();
+  const sessionMin = timerCommit();
   document.getElementById('fc-study').classList.add('fc-hidden');
   document.getElementById('fc-done').classList.remove('fc-hidden');
   document.getElementById('s-ok').textContent = session.ok;
   document.getElementById('s-maybe').textContent = session.maybe;
   document.getElementById('s-no').textContent = session.no;
   document.getElementById('fc-done-summary').textContent = session.count+'枚やりました';
+  const todayMin = studyTime[todayKey()] || 0;
+  document.getElementById('fc-session-time').textContent = 
+    '今回 '+sessionMin+'分 / 今日累計 '+todayMin+'分';
 }
 
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && synth) synth.cancel();
+  if(document.hidden){
+    if(synth) synth.cancel();
+    timerPause();
+  } else {
+    // Only resume if we're in the study view (session active)
+    const studyVisible = !document.getElementById('fc-study').classList.contains('fc-hidden');
+    const appVisible = !document.getElementById('fc-app').classList.contains('fc-hidden');
+    if(studyVisible && appVisible){
+      timerStart();
+    }
+  }
 });
 </script>
 </body>
