@@ -86,6 +86,9 @@ body{margin:0;padding:calc(var(--safe-top)+24px) calc(env(safe-area-inset-right,
 .fc-list-word{font-size:16px;font-weight:500;}
 .fc-list-meta{font-size:13px;color:var(--text-3);}
 .fc-list-empty{padding:30px;text-align:center;color:var(--text-3);font-size:14px;}
+.fc-list-mark{display:inline-block;margin-right:8px;font-weight:700;font-size:15px;}
+.fc-list-mark.mastered{color:var(--ok);}
+.fc-list-mark.struggling{color:var(--no);}
 .fc-link-btn{background:transparent;border:none;color:var(--info);cursor:pointer;font-family:inherit;font-size:15px;text-decoration:underline;padding:10px;}
 .fc-warn-mt{font-size:12px;color:var(--text-3);margin-top:6px;font-style:italic;}
 .fc-time-block{background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:12px 0 16px;text-align:left;}
@@ -116,16 +119,16 @@ body{margin:0;padding:calc(var(--safe-top)+24px) calc(env(safe-area-inset-right,
   </div>
   <div class="fc-summary" id="fc-summary"></div>
   <button class="fc-startbtn" onclick="startApp()">▶ スタート</button>
-  <button class="fc-link-btn" onclick="showMastered()">✓ 習得した単語一覧を見る</button>
+  <button class="fc-link-btn" onclick="showWordList()">📋 単語一覧を見る</button>
 </div>
 
-<div id="fc-mastered-view" class="fc-hidden">
+<div id="fc-wordlist-view" class="fc-hidden">
   <div class="fc-head">
-    <span>✓ 習得した単語</span>
-    <button class="fc-quitbtn" onclick="hideMastered()">戻る</button>
+    <span>📋 単語一覧 (100語)</span>
+    <button class="fc-quitbtn" onclick="hideWordList()">戻る</button>
   </div>
-  <p style="font-size:12px;color:var(--text-3);margin:8px 0 12px;">「覚えた」を5回以上チェックした単語です。LRで「既知としてマーク」してから次回JSONエクスポートしてください。</p>
-  <div class="fc-list" id="fc-mastered-list"></div>
+  <p style="font-size:12px;color:var(--text-3);margin:8px 0 12px;"><span style="color:var(--ok)">✓</span> 習得 / <span style="color:var(--no)">✓</span> 苦手</p>
+  <div class="fc-list" id="fc-wordlist"></div>
 </div>
 
 <div id="fc-app" class="fc-hidden">
@@ -206,6 +209,7 @@ const CARDS = {{CARDS_DATA}};
 const MEM_KEY = 'lr_word_memory_v2';
 const TIME_KEY = 'lr_study_time_v1';
 const MASTERED_THRESHOLD = 5; // 「覚えた」5回で習得判定
+const STRUGGLING_THRESHOLD = 5; // 「怪しい」+「忘れた」合計5回で苦手判定
 const KEEP_DAYS = 90;
 
 // ===== Study time tracking =====
@@ -307,10 +311,14 @@ function isMastered(m){
   return m.ok >= MASTERED_THRESHOLD;
 }
 
+function isStruggling(m){
+  return (m.maybe + m.no) >= STRUGGLING_THRESHOLD;
+}
+
 function memBadge(card, m){
   if(isMastered(m)) return {label:'習得', cls:'fc-mem-known'};
+  if(isStruggling(m)) return {label:'苦手', cls:'fc-mem-hard'};
   if(m.ok+m.maybe+m.no === 0) return {label:'未学習', cls:'fc-mem-new'};
-  if(m.weight >= 4) return {label:'苦手', cls:'fc-mem-hard'};
   return {label:'学習中', cls:'fc-mem-learning'};
 }
 
@@ -431,31 +439,27 @@ window.addEventListener('DOMContentLoaded', ()=>{
   renderTimeBlock();
 });
 
-// ===== Mastered list =====
-function showMastered(){
+// ===== Word list =====
+function showWordList(){
   document.getElementById('fc-intro').classList.add('fc-hidden');
-  document.getElementById('fc-mastered-view').classList.remove('fc-hidden');
+  document.getElementById('fc-wordlist-view').classList.remove('fc-hidden');
   
-  // Sort mastered by freqRank ascending
-  const mastered = CARDS
-    .filter(c => isMastered(getMem(c)))
-    .sort((a,b) => a.fr - b.fr);
-  
-  const listEl = document.getElementById('fc-mastered-list');
-  if(mastered.length === 0){
-    listEl.innerHTML = '<div class="fc-list-empty">まだ習得した単語はありません</div>';
-  } else {
-    listEl.innerHTML = mastered.map(c => {
-      const m = getMem(c);
-      return '<div class="fc-list-item">'+
-        '<span class="fc-list-word">'+c.w+'</span>'+
-        '<span class="fc-list-meta">順位 '+c.fr+' / 覚えた '+m.ok+'回</span>'+
-        '</div>';
-    }).join('');
-  }
+  const listEl = document.getElementById('fc-wordlist');
+  listEl.innerHTML = CARDS.map(c => {
+    const m = getMem(c);
+    const mastered = isMastered(m);
+    const struggling = !mastered && isStruggling(m);
+    let mark = '';
+    if(mastered) mark = '<span class="fc-list-mark mastered">✓</span>';
+    else if(struggling) mark = '<span class="fc-list-mark struggling">✓</span>';
+    return '<div class="fc-list-item">'+
+      '<span class="fc-list-word">'+mark+c.w+'</span>'+
+      '<span class="fc-list-meta">忘れた '+m.no+' / 怪しい '+m.maybe+' / 覚えた '+m.ok+'</span>'+
+      '</div>';
+  }).join('');
 }
-function hideMastered(){
-  document.getElementById('fc-mastered-view').classList.add('fc-hidden');
+function hideWordList(){
+  document.getElementById('fc-wordlist-view').classList.add('fc-hidden');
   document.getElementById('fc-intro').classList.remove('fc-hidden');
 }
 
@@ -562,9 +566,9 @@ function rate(level){
   const c = CARDS[currentIdx];
   const m = getMem(c);
   m.last = Date.now();
-  if(level === 2){ m.ok++; m.weight = Math.max(0.2, m.weight*0.5); session.ok++; }
-  else if(level === 1){ m.maybe++; m.weight = Math.min(5.0, m.weight*1.3); session.maybe++; }
-  else { m.no++; m.weight = Math.min(5.0, m.weight*2.5); session.no++; }
+  if(level === 2){ m.ok++; m.weight = Math.max(0.2, m.weight*1.0); session.ok++; }
+  else if(level === 1){ m.maybe++; m.weight = Math.min(5.0, m.weight*1.5); session.maybe++; }
+  else { m.no++; m.weight = Math.min(5.0, m.weight*2.0); session.no++; }
   setMem(c, m);
   session.count++;
   prevIdx = currentIdx;
