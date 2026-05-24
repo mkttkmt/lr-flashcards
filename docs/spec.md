@@ -53,8 +53,8 @@ LR からエクスポートした JSON (`learningStage: "LEARNING"` フィルタ
 フレーズの場合、保存対象は字幕の真ん中の行（`subtitles[1]`）だが、英日の対応がズレることがある（Netflixの日本語字幕は文字数制限で前後の塊と結合されることがあるため）。
 
 そのため、前後の文脈を含めた 3 行を結合して表示する：
-- 英文: `subtitles[0]` + `subtitles[1]` + `subtitles[2]` を改行で結合、`[1]` を太字
-- 訳: `hTranslations[0,1,2]` を改行で結合（無ければ `mTranslations` フォールバック）、`[1]` を太字
+- 英文: `subtitles[0]` + `subtitles[1]` + `subtitles[2]` を改行で結合、`[1]` を黄色マーカーでハイライト
+- 訳: `hTranslations[0,1,2]` を改行で結合（無ければ `mTranslations` フォールバック）、`[1]` を黄色マーカーでハイライト
 
 ストレージキーや読み上げ対象も 3 行結合した内容になる。
 
