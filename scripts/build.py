@@ -113,28 +113,42 @@ def build_phrase_card(item):
     m_translations = phrase.get('mTranslations', {})
     h_translations = phrase.get('hTranslations') or {}
 
-    # Main phrase text is at subtitles[1]
-    phrase_text = subtitles.get('1', '').replace('\n', ' ').strip()
-    # Translation: prefer human, fall back to machine
-    if h_translations and h_translations.get('1'):
-        phrase_trans = h_translations['1']
-    else:
-        phrase_trans = m_translations.get('1', '')
-
+    # Get all three subtitle lines (English)
+    en_lines = []
+    for i in ['0', '1', '2']:
+        s = subtitles.get(i, '').replace('\n', ' ').strip()
+        en_lines.append(s)
+    
+    # Get all three translation lines (prefer human, fall back to machine)
+    ja_lines = []
+    for i in ['0', '1', '2']:
+        s = ''
+        if h_translations and h_translations.get(i):
+            s = h_translations[i]
+        elif m_translations.get(i):
+            s = m_translations[i]
+        s = s.replace('\n', ' ').strip()
+        ja_lines.append(s)
+    
+    # Main phrase used for key
+    main_phrase = en_lines[1] if len(en_lines) > 1 else ''
+    
     title = phrase.get('reference', {}).get('diocoDocName', '')
 
     return {
-        'k': phrase_text.lower(),    # storage key (full phrase lowercase)
+        'k': main_phrase.lower(),    # storage key (main phrase lowercase)
         'tp': 'ph',                  # type: phrase
-        'w': phrase_text,            # display text (full phrase)
+        'w': '__PHRASE_W__',         # not used for phrase
+        'wl': en_lines,              # English lines [0,1,2] - middle is bold
         'p': 'phrase',
-        't': phrase_trans,
+        't': '__PHRASE_T__',         # not used for phrase
+        'tl': ja_lines,              # Japanese lines [0,1,2]
         'fr': item['freqRank'],
         'fl': freq_label(item['freqRank']),
-        'ce': '',                    # no example for phrases
-        'cj': '',                    # no example for phrases
+        'ce': '',                    # no separate example for phrases
+        'cj': '',
         'src': title[:50],
-        'mt': False,                 # phrases shown as-is
+        'mt': False,
     }
 
 

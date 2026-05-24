@@ -456,10 +456,12 @@ function showWordList(){
     let mark = '';
     if(mastered) mark = '<span class="fc-list-mark mastered">✓</span>';
     else if(struggling) mark = '<span class="fc-list-mark struggling">✓</span>';
-    // Phrase: truncate to first 4-5 words
+    // Phrase: use middle line and truncate to first 4-5 words
     let displayText = c.w;
     if(c.tp === 'ph'){
-      const words = c.w.split(/\s+/);
+      const main = (Array.isArray(c.wl) && c.wl[1]) ? c.wl[1] : c.w;
+      displayText = main;
+      const words = main.split(/\s+/);
       if(words.length > 5){
         displayText = words.slice(0, 5).join(' ') + '…';
       }
@@ -524,19 +526,42 @@ function nextCard(){
   mF.className = 'fc-mem-badge '+badge.cls;
   mB.className = 'fc-mem-badge '+badge.cls;
   
-  document.getElementById('fc-word').textContent = c.w;
-  document.getElementById('fc-word-back').textContent = c.w;
-  // Dynamic font sizing based on length (phrase support)
-  const wordLen = c.w.length;
+  // Render main display
+  const fcWord = document.getElementById('fc-word');
+  const fcWordBack = document.getElementById('fc-word-back');
+  if(c.tp === 'ph' && Array.isArray(c.wl)){
+    // Phrase: 3 lines, middle line bold
+    const renderLines = (lines) => lines.map((line, i) => {
+      const safe = escapeHtml(line || '');
+      return i === 1 ? '<b>' + safe + '</b>' : safe;
+    }).filter(l => l).join('<br>');
+    fcWord.innerHTML = renderLines(c.wl);
+    fcWordBack.innerHTML = renderLines(c.wl);
+  } else {
+    fcWord.textContent = c.w;
+    fcWordBack.textContent = c.w;
+  }
+  // Dynamic font sizing based on length
+  const mainLen = (c.tp === 'ph' && Array.isArray(c.wl))
+    ? (c.wl.join(' ').length)
+    : c.w.length;
   let wordSize, wordBackSize;
-  if(wordLen <= 20){ wordSize = '36px'; wordBackSize = '28px'; }
-  else if(wordLen <= 40){ wordSize = '24px'; wordBackSize = '20px'; }
-  else if(wordLen <= 70){ wordSize = '20px'; wordBackSize = '17px'; }
+  if(mainLen <= 20){ wordSize = '36px'; wordBackSize = '28px'; }
+  else if(mainLen <= 40){ wordSize = '24px'; wordBackSize = '20px'; }
+  else if(mainLen <= 70){ wordSize = '20px'; wordBackSize = '17px'; }
   else { wordSize = '16px'; wordBackSize = '14px'; }
-  document.getElementById('fc-word').style.fontSize = wordSize;
-  document.getElementById('fc-word-back').style.fontSize = wordBackSize;
+  fcWord.style.fontSize = wordSize;
+  fcWordBack.style.fontSize = wordBackSize;
   document.getElementById('fc-pos').textContent = c.p || '';
-  document.getElementById('fc-trans').textContent = c.t;
+  if(c.tp === 'ph' && Array.isArray(c.tl)){
+    const transLines = c.tl.map((line, i) => {
+      const safe = escapeHtml(line || '');
+      return i === 1 ? '<b>' + safe + '</b>' : safe;
+    }).filter(l => l).join('<br>');
+    document.getElementById('fc-trans').innerHTML = transLines;
+  } else {
+    document.getElementById('fc-trans').textContent = c.t;
+  }
   document.getElementById('fc-ctx-en').textContent = c.ce || '';
   document.getElementById('fc-ctx-ja').textContent = c.cj || '';
   document.getElementById('fc-src').textContent = '📺 '+(c.src||'');
@@ -553,7 +578,8 @@ function nextCard(){
   
   if(document.getElementById('fc-autoplay').checked){
     const speakRate = c.tp === 'ph' ? 0.9 : 0.95;
-    setTimeout(()=>speak(c.w, {rate: speakRate}), 250);
+    const speakText = (c.tp === 'ph' && Array.isArray(c.wl)) ? c.wl.filter(l=>l).join(' ') : c.w;
+    setTimeout(()=>speak(speakText, {rate: speakRate}), 250);
   }
 }
 
@@ -576,12 +602,14 @@ document.getElementById('fc-card').addEventListener('click', (e)=>{
 document.getElementById('fc-speak-front').addEventListener('click', (e)=>{
   e.stopPropagation();
   const c = CARDS[currentIdx];
-  speak(c.w, {rate: c.tp === 'ph' ? 0.9 : 0.95});
+  const txt = (c.tp === 'ph' && Array.isArray(c.wl)) ? c.wl.filter(l=>l).join(' ') : c.w;
+  speak(txt, {rate: c.tp === 'ph' ? 0.9 : 0.95});
 });
 document.getElementById('fc-speak-back').addEventListener('click', (e)=>{
   e.stopPropagation();
   const c = CARDS[currentIdx];
-  speak(c.w, {rate: c.tp === 'ph' ? 0.9 : 0.95});
+  const txt = (c.tp === 'ph' && Array.isArray(c.wl)) ? c.wl.filter(l=>l).join(' ') : c.w;
+  speak(txt, {rate: c.tp === 'ph' ? 0.9 : 0.95});
 });
 document.getElementById('fc-speak-ex').addEventListener('click', (e)=>{
   e.stopPropagation(); speak(CARDS[currentIdx].ce, {rate:0.9});
