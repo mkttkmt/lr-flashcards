@@ -22,11 +22,12 @@ POS_MAP = {
     'NUM': 'num', 'AUX': 'aux'
 }
 
-TOP_N = 100
+TOP_WORDS = 100
+TOP_PHRASES = 20
 
 
 def freq_label(rank):
-    """LR の順位帯ラベルにマッピング"""
+    """LR の順位帯ラベル"""
     if rank <= 300:
         return "超頻出"
     if rank <= 600:
@@ -53,7 +54,6 @@ def trim(s, maxlen=200):
 
 
 def find_pos(tokens_dict, word):
-    """subtitleTokens から target word の品詞を探す"""
     word_lower = word.lower()
     for sub_idx in ['0', '1', '2']:
         if sub_idx in tokens_dict:
@@ -65,73 +65,121 @@ def find_pos(tokens_dict, word):
     return ''
 
 
+def build_word_card(item):
+    word = item.get('word', {}).get('text', '')
+    base_track = (item.get('context', {})
+                  .get('phrase', {}).get('reference', {})
+                  .get('tm', {}).get('baseTrack', {}))
+    is_machine_translated = base_track.get('langCode_G') == 'ja'
+
+    phrase = item.get('context', {}).get('phrase', {})
+    subtitles = phrase.get('subtitles', {})
+    m_translations = phrase.get('mTranslations', {})
+    h_translations = phrase.get('hTranslations') or {}
+    tokens = phrase.get('subtitleTokens', {})
+
+    ctx_en_parts = [subtitles[i] for i in ['0', '1', '2'] if i in subtitles]
+    ctx_en = '\n'.join(ctx_en_parts)
+
+    ctx_ja_parts = []
+    for i in ['0', '1', '2']:
+        if h_translations and i in h_translations and h_translations[i]:
+            ctx_ja_parts.append(h_translations[i])
+        elif i in m_translations and m_translations[i]:
+            ctx_ja_parts.append(m_translations[i])
+    ctx_ja = '\n'.join(ctx_ja_parts)
+
+    pos = find_pos(tokens, word)
+    title = phrase.get('reference', {}).get('diocoDocName', '')
+
+    return {
+        'k': word.lower(),          # storage key
+        'tp': 'w',                   # type: word
+        'w': word,                   # display text
+        'p': pos,
+        't': ', '.join(item.get('wordTranslationsArr', [])),
+        'fr': item['freqRank'],
+        'fl': freq_label(item['freqRank']),
+        'ce': '' if is_machine_translated else trim(ctx_en, 180),
+        'cj': trim(ctx_ja, 180),
+        'src': title[:50],
+        'mt': is_machine_translated,
+    }
+
+
+def build_phrase_card(item):
+    phrase = item.get('context', {}).get('phrase', {})
+    subtitles = phrase.get('subtitles', {})
+    m_translations = phrase.get('mTranslations', {})
+    h_translations = phrase.get('hTranslations') or {}
+
+    # Main phrase text is at subtitles[1]
+    phrase_text = subtitles.get('1', '').replace('\n', ' ').strip()
+    # Translation: prefer human, fall back to machine
+    if h_translations and h_translations.get('1'):
+        phrase_trans = h_translations['1']
+    else:
+        phrase_trans = m_translations.get('1', '')
+
+    title = phrase.get('reference', {}).get('diocoDocName', '')
+
+    return {
+        'k': phrase_text.lower(),    # storage key (full phrase lowercase)
+        'tp': 'ph',                  # type: phrase
+        'w': phrase_text,            # display text (full phrase)
+        'p': 'phrase',
+        't': phrase_trans,
+        'fr': item['freqRank'],
+        'fl': freq_label(item['freqRank']),
+        'ce': '',                    # no example for phrases
+        'cj': '',                    # no example for phrases
+        'src': title[:50],
+        'mt': False,                 # phrases shown as-is
+    }
+
+
 def extract_cards(items):
-    """JSONアイテムからフラッシュカード用データを抽出"""
-    # freqRank が無いものは除外、ランク昇順でソート
-    items_with_rank = [item for item in items if item.get('freqRank') is not None]
-    items_with_rank.sort(key=lambda x: x['freqRank'])
+    # Split by itemType
+    word_items = [i for i in items
+                  if i.get('itemType') == 'WORD' and i.get('freqRank') is not None]
+    phrase_items = [i for i in items
+                    if i.get('itemType') == 'PHRASE']
 
-    # 単語で重複排除
-    seen = set()
-    unique = []
-    for item in items_with_rank:
-        word = item.get('word', {}).get('text', '').lower()
-        if word and word not in seen:
-            seen.add(word)
-            unique.append(item)
+    # Words: sort by freqRank ascending, dedupe by word lowercase, take top 100
+    word_items.sort(key=lambda x: x['freqRank'])
+    seen_words = set()
+    unique_words = []
+    for item in word_items:
+        w = item.get('word', {}).get('text', '').lower()
+        if w and w not in seen_words:
+            seen_words.add(w)
+            unique_words.append(item)
+    top_words = unique_words[:TOP_WORDS]
 
-    top = unique[:TOP_N]
+    # Phrases: sort by timeCreated_ms ascending (oldest first), dedupe by phrase text lowercase, take top 20
+    phrase_items.sort(key=lambda x: x.get('timeCreated_ms', 0))
+    seen_phrases = set()
+    unique_phrases = []
+    for item in phrase_items:
+        ph_text = item.get('context', {}).get('phrase', {}).get('subtitles', {}).get('1', '').replace('\n', ' ').strip().lower()
+        if ph_text and ph_text not in seen_phrases:
+            seen_phrases.add(ph_text)
+            unique_phrases.append(item)
+    top_phrases = unique_phrases[:TOP_PHRASES]
 
     cards = []
-    for item in top:
-        word = item.get('word', {}).get('text', '')
+    for item in top_words:
+        cards.append(build_word_card(item))
+    for item in top_phrases:
+        cards.append(build_phrase_card(item))
 
-        base_track = (item.get('context', {})
-                      .get('phrase', {}).get('reference', {})
-                      .get('tm', {}).get('baseTrack', {}))
-        is_machine_translated = base_track.get('langCode_G') == 'ja'
-
-        phrase = item.get('context', {}).get('phrase', {})
-        subtitles = phrase.get('subtitles', {})
-        m_translations = phrase.get('mTranslations', {})
-        h_translations = phrase.get('hTranslations') or {}
-        tokens = phrase.get('subtitleTokens', {})
-
-        # 英語コンテキスト
-        ctx_en_parts = [subtitles[i] for i in ['0', '1', '2'] if i in subtitles]
-        ctx_en = '\n'.join(ctx_en_parts)
-
-        # 日本語コンテキスト: human translation を優先、無ければ machine
-        ctx_ja_parts = []
-        for i in ['0', '1', '2']:
-            if h_translations and i in h_translations and h_translations[i]:
-                ctx_ja_parts.append(h_translations[i])
-            elif i in m_translations and m_translations[i]:
-                ctx_ja_parts.append(m_translations[i])
-        ctx_ja = '\n'.join(ctx_ja_parts)
-
-        pos = find_pos(tokens, word)
-        title = phrase.get('reference', {}).get('diocoDocName', '')
-
-        cards.append({
-            'w': word,
-            'p': pos,
-            't': ', '.join(item.get('wordTranslationsArr', [])),
-            'fr': item['freqRank'],
-            'fl': freq_label(item['freqRank']),
-            'ce': '' if is_machine_translated else trim(ctx_en, 180),
-            'cj': trim(ctx_ja, 180),
-            'src': title[:50],
-            'mt': is_machine_translated,
-        })
-    return cards
+    return cards, len(top_words), len(top_phrases)
 
 
 def main():
     if not INPUT_JSON.exists():
         print(f"❌ 入力JSONが見つかりません: {INPUT_JSON}", file=sys.stderr)
         sys.exit(1)
-
     if not TEMPLATE_HTML.exists():
         print(f"❌ テンプレートが見つかりません: {TEMPLATE_HTML}", file=sys.stderr)
         sys.exit(1)
@@ -141,16 +189,14 @@ def main():
 
     print(f"📂 LR JSON 読み込み: {len(items)} アイテム")
 
-    cards = extract_cards(items)
-    print(f"📌 抽出: 上位 {len(cards)} 語 (freqRank {cards[0]['fr']}〜{cards[-1]['fr']})")
+    cards, n_words, n_phrases = extract_cards(items)
+    print(f"📌 抽出: 単語 {n_words} 語 + フレーズ {n_phrases} 件 = 合計 {len(cards)} カード")
 
-    # テンプレート読み込み + データ差し込み
     with TEMPLATE_HTML.open('r', encoding='utf-8') as f:
         template = f.read()
 
     cards_json = json.dumps(cards, ensure_ascii=False, separators=(',', ':'))
 
-    # テンプレート内の {{CARDS_DATA}} プレースホルダーを置換
     if '{{CARDS_DATA}}' not in template:
         print("❌ テンプレートに {{CARDS_DATA}} プレースホルダーがありません", file=sys.stderr)
         sys.exit(1)

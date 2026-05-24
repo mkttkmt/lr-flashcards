@@ -205,6 +205,9 @@ body{margin:0;padding:calc(var(--safe-top)+24px) calc(env(safe-area-inset-right,
 </div>
 
 <script>
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
 const CARDS = {{CARDS_DATA}};
 const MEM_KEY = 'lr_word_memory_v2';
 const TIME_KEY = 'lr_study_time_v1';
@@ -293,7 +296,7 @@ let memory = loadMemory();
 
 // Cleanup: remove memory entries not in current CARDS
 (function cleanup(){
-  const currentWords = new Set(CARDS.map(c=>c.w.toLowerCase()));
+  const currentWords = new Set(CARDS.map(c=>c.k || c.w.toLowerCase()));
   let changed = false;
   for(const k of Object.keys(memory)){
     if(!currentWords.has(k)){ delete memory[k]; changed = true; }
@@ -301,7 +304,7 @@ let memory = loadMemory();
   if(changed) saveMemory();
 })();
 
-function memKey(card){ return (card.w||'').toLowerCase().trim(); }
+function memKey(card){ return (card.k||(card.w||'').toLowerCase()).trim(); }
 function getMem(card){
   return memory[memKey(card)] || { weight:2.0, ok:0, maybe:0, no:0, last:0 };
 }
@@ -327,9 +330,10 @@ function pickCard(prevIdx){
   const weights = CARDS.map((c, i) => {
     if(CARDS.length>1 && i===prevIdx) return 0;
     const m = getMem(c);
-    // Mastered words appear very rarely
-    if(isMastered(m)) return 0.1;
-    return m.weight;
+    // Weight based on most recent rating
+    if(m.lastLevel === undefined || m.lastLevel === null) return 1.0; // 未学習
+    if(m.lastLevel === 2) return 0.5; // 直近 覚えた
+    return 1.5; // 直近 忘れた or 怪しい
   });
   const total = weights.reduce((a,b)=>a+b, 0);
   if(total <= 0) return Math.floor(Math.random()*CARDS.length);
@@ -452,8 +456,16 @@ function showWordList(){
     let mark = '';
     if(mastered) mark = '<span class="fc-list-mark mastered">✓</span>';
     else if(struggling) mark = '<span class="fc-list-mark struggling">✓</span>';
+    // Phrase: truncate to first 4-5 words
+    let displayText = c.w;
+    if(c.tp === 'ph'){
+      const words = c.w.split(/\s+/);
+      if(words.length > 5){
+        displayText = words.slice(0, 5).join(' ') + '…';
+      }
+    }
     return '<div class="fc-list-item">'+
-      '<span class="fc-list-word">'+mark+c.w+'</span>'+
+      '<span class="fc-list-word">'+mark+escapeHtml(displayText)+'</span>'+
       '<span class="fc-list-meta">忘れた '+m.no+' / 怪しい '+m.maybe+' / 覚えた '+m.ok+'</span>'+
       '</div>';
   }).join('');
@@ -514,6 +526,15 @@ function nextCard(){
   
   document.getElementById('fc-word').textContent = c.w;
   document.getElementById('fc-word-back').textContent = c.w;
+  // Dynamic font sizing based on length (phrase support)
+  const wordLen = c.w.length;
+  let wordSize, wordBackSize;
+  if(wordLen <= 20){ wordSize = '36px'; wordBackSize = '28px'; }
+  else if(wordLen <= 40){ wordSize = '24px'; wordBackSize = '20px'; }
+  else if(wordLen <= 70){ wordSize = '20px'; wordBackSize = '17px'; }
+  else { wordSize = '16px'; wordBackSize = '14px'; }
+  document.getElementById('fc-word').style.fontSize = wordSize;
+  document.getElementById('fc-word-back').style.fontSize = wordBackSize;
   document.getElementById('fc-pos').textContent = c.p || '';
   document.getElementById('fc-trans').textContent = c.t;
   document.getElementById('fc-ctx-en').textContent = c.ce || '';
@@ -531,7 +552,8 @@ function nextCard(){
   document.getElementById('fc-actions').style.visibility = 'hidden';
   
   if(document.getElementById('fc-autoplay').checked){
-    setTimeout(()=>speak(c.w), 250);
+    const speakRate = c.tp === 'ph' ? 0.9 : 0.95;
+    setTimeout(()=>speak(c.w, {rate: speakRate}), 250);
   }
 }
 
@@ -552,10 +574,14 @@ document.getElementById('fc-card').addEventListener('click', (e)=>{
   flipCard();
 });
 document.getElementById('fc-speak-front').addEventListener('click', (e)=>{
-  e.stopPropagation(); speak(CARDS[currentIdx].w);
+  e.stopPropagation();
+  const c = CARDS[currentIdx];
+  speak(c.w, {rate: c.tp === 'ph' ? 0.9 : 0.95});
 });
 document.getElementById('fc-speak-back').addEventListener('click', (e)=>{
-  e.stopPropagation(); speak(CARDS[currentIdx].w);
+  e.stopPropagation();
+  const c = CARDS[currentIdx];
+  speak(c.w, {rate: c.tp === 'ph' ? 0.9 : 0.95});
 });
 document.getElementById('fc-speak-ex').addEventListener('click', (e)=>{
   e.stopPropagation(); speak(CARDS[currentIdx].ce, {rate:0.9});
@@ -566,9 +592,10 @@ function rate(level){
   const c = CARDS[currentIdx];
   const m = getMem(c);
   m.last = Date.now();
-  if(level === 2){ m.ok++; m.weight = Math.max(0.2, m.weight*1.0); session.ok++; }
-  else if(level === 1){ m.maybe++; m.weight = Math.min(5.0, m.weight*1.5); session.maybe++; }
-  else { m.no++; m.weight = Math.min(5.0, m.weight*2.0); session.no++; }
+  m.lastLevel = level;
+  if(level === 2){ m.ok++; session.ok++; }
+  else if(level === 1){ m.maybe++; session.maybe++; }
+  else { m.no++; session.no++; }
   setMem(c, m);
   session.count++;
   prevIdx = currentIdx;
