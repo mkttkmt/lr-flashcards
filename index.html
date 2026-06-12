@@ -91,6 +91,7 @@ body{margin:0;padding:calc(max(var(--safe-top),20px) + 16px) calc(env(safe-area-
 .fc-list-mark.struggling{color:var(--no);}
 .fc-link-btn{background:transparent;border:none;color:var(--info);cursor:pointer;font-family:inherit;font-size:15px;text-decoration:underline;padding:10px;}
 .fc-warn-mt{font-size:12px;color:var(--text-3);margin-top:6px;font-style:italic;}
+.fc-highlight{background:linear-gradient(transparent 60%, rgba(255,235,59,0.55) 60%);padding:0 2px;border-radius:2px;}
 .fc-time-block{background:var(--bg-2);border-radius:12px;padding:14px 16px;margin:12px 0 16px;text-align:left;}
 .fc-time-today{font-size:14px;color:var(--text-2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;}
 .fc-time-today b{color:var(--text);font-size:20px;font-weight:600;margin-left:8px;}
@@ -530,10 +531,10 @@ function nextCard(){
   const fcWord = document.getElementById('fc-word');
   const fcWordBack = document.getElementById('fc-word-back');
   if(c.tp === 'ph' && Array.isArray(c.wl)){
-    // Phrase: 3 lines, middle line bold
+    // Phrase: 3 lines, middle line highlighted
     const renderLines = (lines) => lines.map((line, i) => {
       const safe = escapeHtml(line || '');
-      return i === 1 ? '<b>' + safe + '</b>' : safe;
+      return safe ? (i === 1 ? '<span class="fc-highlight">' + safe + '</span>' : safe) : '';
     }).filter(l => l).join('<br>');
     fcWord.innerHTML = renderLines(c.wl);
     fcWordBack.innerHTML = renderLines(c.wl);
@@ -556,7 +557,7 @@ function nextCard(){
   if(c.tp === 'ph' && Array.isArray(c.tl)){
     const transLines = c.tl.map((line, i) => {
       const safe = escapeHtml(line || '');
-      return i === 1 ? '<b>' + safe + '</b>' : safe;
+      return safe ? (i === 1 ? '<span class="fc-highlight">' + safe + '</span>' : safe) : '';
     }).filter(l => l).join('<br>');
     document.getElementById('fc-trans').innerHTML = transLines;
   } else {
